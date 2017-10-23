@@ -147,6 +147,13 @@ class SmartTV {
 		));
 	}
 	
+        public function processAppCommand($app,$command) {
+                if ($this->session === null) {
+                        throw new Exception('No session id given.');
+                }
+                return ($this->sendPostRequest('/udap/api/apptoapp/command/$app/$command'));
+        }
+	
 	public function queryData($targetId) {
 		if ($this->session === null) {
 			throw new Exception('No session id given.');
@@ -154,6 +161,23 @@ class SmartTV {
 		$var = $this->sendXMLRequest('/roap/api/data?target='.$targetId);
 		return isset($var['data']) ? $var['data'] : $var;
 	}
+	
+	        private function sendPostRequest($actionFile, $data = '') {
+                curl_setopt(($ch = curl_init()), CURLOPT_URL, $this->connectionDetails[0] . ':' . $this->connectionDetails[1] . $actionFile);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                        'Connection: Close'
+                ));
+                        curl_setopt($ch, CURLOPT_POST, 1);
+
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+                $envar   = curl_exec($ch);
+                $execute = (array)@simplexml_load_string($envar);
+                if (isset($execute['ROAPError']) && $execute['ROAPError'] != '200') {
+                        throw new Exception('Error (' . $execute['ROAPError'] . '): ' . $execute['ROAPErrorDetail']);
+                }
+                return count($execute) < 2 ? $envar : $execute;
+        }
 	
 	private function sendXMLRequest($actionFile, $data = '') {
 		curl_setopt(($ch = curl_init()), CURLOPT_URL, $this->connectionDetails[0] . ':' . $this->connectionDetails[1] . $actionFile);
